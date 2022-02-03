@@ -10,11 +10,11 @@ import (
 
 type User struct {
 	gorm.Model
-	Name       string  `gorm:"unique"`
+	Name       string  `gorm:"unique;auditable"`
 	Roles      []*Role `gorm:"many2many:user_roles"`
 	RoleCount  uint
 	UserRoles  []*UserRole
-	Attributes datatypes.JSON
+	Attributes datatypes.JSON `gorm:"auditable"`
 }
 
 func WithRole(role string) func(db *gorm.DB) *gorm.DB {

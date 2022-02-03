@@ -97,6 +97,26 @@ func TestCreateUserWithRole(t *testing.T) {
 	assert.Equal(t, 3, len(user.Roles))
 }
 
+func TestUpdateUser(t *testing.T) {
+	prepareTestDB()
+
+	result := db.Conn.Create(&User{
+		Name: "old-hlxwell",
+		Roles: []*Role{
+			{Name: "admin"},
+			{Name: "writer"},
+			{Name: "reader"},
+		},
+	})
+	assert.NoError(t, result.Error)
+
+	var user User
+	db.Conn.Last(&user)
+
+	user.Name = "new-hlxwell"
+	db.Conn.Save(&user)
+}
+
 // Should be able to Create Role and User in one request from Nested Form
 func TestCreateUserAndRoleInOneRequest(t *testing.T) {
 	prepareTestDB()

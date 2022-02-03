@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/hlxwell/gorm-by-example/plugin"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -54,4 +55,12 @@ func makeConn(name string) {
 	if err != nil {
 		panic(err)
 	}
+
+	Conn.Use(plugin.New(plugin.Config{
+		DB:          Conn,
+		AutoMigrate: true,
+		Tables: []string{
+			"User",
+		},
+	}))
 }

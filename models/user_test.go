@@ -100,10 +100,20 @@ func TestCreateUserWithRole(t *testing.T) {
 func TestUpdateUser(t *testing.T) {
 	prepareTestDB()
 
-	var user User
-	db.Conn.First(&user)
+	result := db.Conn.Create(&User{
+		Name: "old-hlxwell",
+		Roles: []*Role{
+			{Name: "admin"},
+			{Name: "writer"},
+			{Name: "reader"},
+		},
+	})
+	assert.NoError(t, result.Error)
 
-	user.Name = "great name"
+	var user User
+	db.Conn.Last(&user)
+
+	user.Name = "new-hlxwell"
 	db.Conn.Save(&user)
 }
 

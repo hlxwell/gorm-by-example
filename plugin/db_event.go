@@ -8,8 +8,9 @@ import (
 )
 
 const (
-	INSERT_EVENT = "insert"
-	UPDATE_EVENT = "update"
+	InsertEvent      = "insert"
+	UpdateEvent      = "update"
+	CurrentUserIDKey = "currentUserID"
 )
 
 type Config struct {
@@ -65,15 +66,19 @@ func (e *DBEvent) createCallback(db *gorm.DB) {
 	}
 
 	obj := getAuditableFields(db)
+	// get current operator id
+	userID, _ := db.Get(CurrentUserIDKey)
 
 	// create a new version with serialized json.
 	v, _ := json.Marshal(obj)
 	version := Version{
-		ItemID:   getCurrentItemID(db),
-		ItemType: db.Statement.Schema.Name,
-		Event:    INSERT_EVENT,
-		Object:   v,
+		ItemID:    getCurrentItemID(db),
+		ItemType:  db.Statement.Schema.Name,
+		Event:     InsertEvent,
+		Object:    v,
+		Whodunnit: fmt.Sprintf("%v", userID),
 	}
+
 	result := e.Config.DB.Create(&version)
 	if result.Error != nil {
 		fmt.Printf("Create Version Error: %s\n", result.Error)
@@ -117,15 +122,19 @@ func (e *DBEvent) updateCallback(db *gorm.DB) {
 		fmt.Println(result.Error)
 	}
 
+	// get current operator id
+	userID, _ := db.Get(CurrentUserIDKey)
+
 	// create a new version with serialized json.
 	objJSON, _ := json.Marshal(obj)
 	prevObjJSON, _ := json.Marshal(prevObj)
 	version := Version{
 		ItemID:        itemID,
 		ItemType:      db.Statement.Schema.Name,
-		Event:         UPDATE_EVENT,
+		Event:         UpdateEvent,
 		Object:        objJSON,
 		ObjectChanges: prevObjJSON,
+		Whodunnit:     fmt.Sprintf("%v", userID),
 	}
 	e.Config.DB.Create(&version)
 }

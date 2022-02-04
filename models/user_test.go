@@ -81,7 +81,8 @@ func TestUserNamePresenceValidation(t *testing.T) {
 func TestCreateUserWithRole(t *testing.T) {
 	prepareTestDB()
 
-	result := db.Conn.Create(&User{
+	db.SetScope(1234)
+	result := db.ScopedConn().Create(&User{
 		Name: "hlxwell",
 		Roles: []*Role{
 			{Name: "admin"},

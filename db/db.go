@@ -1,22 +1,18 @@
 package db
 
 import (
-	"bytes"
 	"fmt"
 	"log"
 	"os"
-	"runtime"
-	"strconv"
 	"time"
 
-	"github.com/hlxwell/gorm-by-example/plugin"
+	"github.com/hlxwell/gorm-by-example/auditable"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
 
 var Conn *gorm.DB
-var ScopedConns map[uint64]*gorm.DB = make(map[uint64]*gorm.DB)
 
 func InitDB() {
 	makeConn("gorm_by_example")
@@ -24,15 +20,6 @@ func InitDB() {
 
 func InitTestDB() {
 	makeConn("gorm_by_example_test")
-}
-
-func ScopedConn() *gorm.DB {
-	return ScopedConns[GoID()]
-}
-
-func SetScope(currentUserID uint) {
-	// FIXME: I need a solution to expire old keys.
-	ScopedConns[GoID()] = Conn.Set(plugin.CurrentUserIDKey, currentUserID)
 }
 
 // Helper Methods ============================
@@ -71,20 +58,12 @@ func makeConn(name string) {
 		panic(err)
 	}
 
-	Conn.Use(plugin.New(plugin.Config{
-		DB:          Conn,
-		AutoMigrate: true,
+	Conn.Use(auditable.New(auditable.Config{
+		CurrentUserIDKey: "current_user_id",
+		DB:               Conn,
+		AutoMigrate:      false,
 		Tables: []string{
 			"User",
 		},
 	}))
-}
-
-func GoID() uint64 {
-	b := make([]byte, 64)
-	b = b[:runtime.Stack(b, false)]
-	b = bytes.TrimPrefix(b, []byte("goroutine "))
-	b = b[:bytes.IndexByte(b, ' ')]
-	n, _ := strconv.ParseUint(string(b), 10, 64)
-	return n
 }

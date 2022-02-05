@@ -4,6 +4,8 @@ go 1.15
 
 require (
 	github.com/go-testfixtures/testfixtures/v3 v3.6.1
+	github.com/labstack/echo v3.3.10+incompatible
+	github.com/labstack/gommon v0.3.1 // indirect
 	github.com/smartystreets/goconvey v1.6.4
 	github.com/stretchr/testify v1.7.0
 	gorm.io/datatypes v1.0.1

@@ -1,4 +1,4 @@
-package plugin
+package auditable
 
 import (
 	"encoding/json"
@@ -8,15 +8,20 @@ import (
 )
 
 const (
-	InsertEvent      = "insert"
-	UpdateEvent      = "update"
-	CurrentUserIDKey = "currentUserID"
+	InsertEvent = "insert"
+	UpdateEvent = "update"
+	UserIDKey   = "auditable:current_user"
+	GormDBKey   = "GORM_DB"
 )
 
+// Keep the config as a global variable.
+var config Config
+
 type Config struct {
-	DB          *gorm.DB
-	AutoMigrate bool
-	Tables      []string
+	CurrentUserIDKey string
+	DB               *gorm.DB
+	AutoMigrate      bool
+	Tables           []string
 }
 
 // DB Event Plugin
@@ -25,7 +30,8 @@ type DBEvent struct {
 	AuditableTables map[string]bool
 }
 
-func New(config Config) *DBEvent {
+func New(cfg Config) *DBEvent {
+	config = cfg
 	dbEvent := DBEvent{
 		Config:          &config,
 		AuditableTables: map[string]bool{},
@@ -35,12 +41,14 @@ func New(config Config) *DBEvent {
 		dbEvent.AuditableTables[table] = true
 	}
 
-	err := config.DB.AutoMigrate(
-		&Version{},
-	)
+	if config.AutoMigrate {
+		err := config.DB.AutoMigrate(
+			&Version{},
+		)
 
-	if err != nil {
-		panic(err)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	return &dbEvent
@@ -51,15 +59,20 @@ func (e *DBEvent) Name() string {
 	return "gorm:db_event"
 }
 
+// Register callback event for After Create & Update Callback in gorm.
 func (e *DBEvent) Initialize(db *gorm.DB) error {
-	// Register a event for Create Callback from gorm.
-	db.Callback().Create().Register("db_event:create", e.createCallback)
-	db.Callback().Update().Register("db_event:update", e.updateCallback)
+	db.Callback().Create().After("gorm:create").Register("db_event:create", e.createCallback)
+	db.Callback().Update().After("gorm:update").Register("db_event:update", e.updateCallback)
 	return nil
 }
 
 // FIXME: maybe we could use db.Statement.Clauses["UPDATE/INSERT"] to judge the event name.
 func (e *DBEvent) createCallback(db *gorm.DB) {
+	// If creation failed, then return.
+	if db.RowsAffected == 0 {
+		return
+	}
+
 	// Check if the table needs to be tracked.
 	if !e.AuditableTables[db.Statement.Schema.Name] {
 		return
@@ -67,7 +80,7 @@ func (e *DBEvent) createCallback(db *gorm.DB) {
 
 	obj := getAuditableFields(db)
 	// get current operator id
-	userID, _ := db.Get(CurrentUserIDKey)
+	userID, _ := db.Get(UserIDKey)
 
 	// create a new version with serialized json.
 	v, _ := json.Marshal(obj)
@@ -86,6 +99,11 @@ func (e *DBEvent) createCallback(db *gorm.DB) {
 }
 
 func (e *DBEvent) updateCallback(db *gorm.DB) {
+	// If updating failed, then return.
+	if db.RowsAffected == 0 {
+		return
+	}
+
 	// Ignore invalid updates
 	itemID := getCurrentItemID(db)
 	if itemID == 0 {
@@ -123,7 +141,7 @@ func (e *DBEvent) updateCallback(db *gorm.DB) {
 	}
 
 	// get current operator id
-	userID, _ := db.Get(CurrentUserIDKey)
+	userID, _ := db.Get(UserIDKey)
 
 	// create a new version with serialized json.
 	objJSON, _ := json.Marshal(obj)

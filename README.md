@@ -13,8 +13,8 @@ This project is for give examples for how to use GORM to do CRUD.
 
 # JSON Field
 
-https://github.com/go-gorm/datatypes
-https://kejyuntw.gitbooks.io/mysql-learning-notes/content/query/query-json-contains.html
+- https://github.com/go-gorm/datatypes
+- https://kejyuntw.gitbooks.io/mysql-learning-notes/content/query/query-json-contains.html
 
 # Callback Notes
 
